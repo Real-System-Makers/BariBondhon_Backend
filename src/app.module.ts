@@ -1,23 +1,26 @@
- 
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { AtGuard } from './auth/guards/access-token.guard';
 import { MongooseModule } from '@nestjs/mongoose';
+import { UserModule } from './user/user.module';
+import { DBConfigService } from './db/db.config';
 
 @Module({
-    imports: [
-        ConfigModule.forRoot({ isGlobal: true }),
-       MongooseModule.forRoot("mongodb+srv://SakibOnMongo:12345678;@systemmakers.du60acc.mongodb.net/?appName=SystemMakers"),
-        AuthModule,
-        
-    ],
-    providers: [
-        {
-            provide: APP_GUARD,
-            useClass: AtGuard,
-        }
-    ],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    MongooseModule.forRootAsync({
+      useClass: DBConfigService,
+    }),
+    AuthModule,
+    UserModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: AtGuard,
+    },
+  ],
 })
 export class AppModule {}
