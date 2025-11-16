@@ -1,0 +1,190 @@
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Auth, AuthDocument } from './entities/auth.entity';
+import { TokenSecret, Tokens } from './types/tokens.type';
+import { SignUpDto } from './dto/sign-up.dto';
+import { UserService } from 'src/user/user.service';
+import { HashService } from 'src/common/services/hash.service';
+import { LoginDto } from './dto/login.dto';
+import { User } from 'src/user/entities/user.entity';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { TokenExpiration, TokenType } from './types/tokens.type';
+import { JwtPayload } from './types/jwt-payload.type';
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private readonly configService: ConfigService,
+    private jwtService: JwtService,
+    private readonly userService: UserService,
+    private readonly hashService: HashService,
+    @InjectModel(Auth.name) private readonly authModel: Model<AuthDocument>,
+  ) {}
+
+  async signup(signUpDto: SignUpDto): Promise<Tokens> {
+    if (signUpDto.password !== signUpDto.confirmPassword) {
+      throw new ForbiddenException({
+        confirmPassword: 'passwords do not match',
+      });
+    }
+
+    const user = await this.userService.createUser(signUpDto);
+
+    const tokens = await this.getTokens(user._id);
+    const hashedRefreshToken = await this.hashService.hashString(
+      tokens.refresh_token,
+    );
+
+    const auth = new Auth({ user, refreshToken: hashedRefreshToken });
+
+    try {
+      await this.authModel.create(auth);
+      return tokens;
+    } catch {
+      throw new ForbiddenException('signup failed');
+    }
+  }
+
+  async login(loginDto: LoginDto): Promise<Tokens> {
+    const auth = await this.authModel
+      .findOne({
+        user: { email: loginDto.email },
+      })
+      .populate({ path: User.name, select: '-password' });
+
+    if (!auth) {
+      throw new ForbiddenException('invalid credentials');
+    }
+
+    const { user } = auth;
+
+    const isPasswordMatch = await this.hashService.compareWithHash(
+      loginDto.password,
+      user.password,
+    );
+    if (!isPasswordMatch) {
+      throw new ForbiddenException('invalid credentials');
+    }
+
+    const expiresIn = loginDto.remember
+      ? TokenExpiration.REFRESH
+      : TokenExpiration.ACCESS;
+    const tokens = await this.getTokens(user._id.toString(), expiresIn);
+    const hashedRefreshToken = await this.hashService.hashString(
+      tokens.refresh_token,
+    );
+
+    auth.refreshToken = hashedRefreshToken;
+    await auth.save();
+
+    return tokens;
+  }
+
+  async logout(userId: string): Promise<Tokens> {
+    await this.authModel.updateOne(
+      { user: { _id: userId } },
+      { refreshToken: null },
+    );
+    return { access_token: '', refresh_token: '' };
+  }
+
+  async refreshTokens(refreshTokenDto: RefreshTokenDto): Promise<Tokens> {
+    const extractedData = this.extractDataFromToken(
+      refreshTokenDto.refreshToken,
+      TokenType.REFRESH,
+    ) as { userId: string };
+
+    const userId = extractedData.userId;
+
+    const auth = await this.authModel.findOne({
+      user: { _id: userId },
+    });
+
+    if (!auth?.refreshToken) {
+      throw new ForbiddenException('invalid credentials');
+    }
+
+    const isRefreshTokenMatch = await this.hashService.compareWithHash(
+      refreshTokenDto.refreshToken,
+      auth.refreshToken,
+    );
+    if (!isRefreshTokenMatch) {
+      throw new ForbiddenException('invalid refresh token');
+    }
+
+    const tokens = await this.getTokens(userId);
+    const hashedRefreshToken = await this.hashService.hashString(
+      tokens.refresh_token,
+    );
+
+    auth.refreshToken = hashedRefreshToken;
+    await auth.save();
+
+    return tokens;
+  }
+
+  async findByUserId(userId: string): Promise<Auth> {
+    const auth = await this.authModel
+      .findOne({
+        user: { _id: userId },
+      })
+      .populate({ path: User.name, select: '-password' });
+
+    if (!auth) {
+      throw new ForbiddenException('invalid credentials');
+    }
+
+    return auth;
+  }
+
+  private async getTokens(
+    userId: string,
+    expiresIn?: TokenExpiration,
+  ): Promise<Tokens> {
+    const [at, rt] = await Promise.all([
+      // access token
+      this.jwtService.signAsync(
+        {
+          userId,
+        },
+        {
+          secret: this.configService.getOrThrow<string>(TokenSecret.ACCESS),
+          expiresIn: expiresIn || TokenExpiration.ACCESS, // 1 week
+        },
+      ),
+
+      // refresh token
+      this.jwtService.signAsync(
+        {
+          userId,
+        },
+        {
+          secret: this.configService.getOrThrow<string>(TokenSecret.REFRESH),
+          expiresIn: '30d', // 1 month
+        },
+      ),
+    ]);
+
+    return {
+      access_token: at,
+      refresh_token: rt,
+    };
+  }
+
+  private extractDataFromToken(token: string, type: TokenType): JwtPayload {
+    try {
+      const secret =
+        type === TokenType.ACCESS ? TokenSecret.ACCESS : TokenSecret.REFRESH;
+
+      const data = this.jwtService.verify<JwtPayload>(token, {
+        secret: this.configService.getOrThrow<string>(secret),
+      });
+      return data;
+    } catch {
+      throw new ForbiddenException('invalid token');
+    }
+  }
+}
