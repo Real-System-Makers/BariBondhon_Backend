@@ -19,7 +19,9 @@ export class RtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
   }
 
   async validate(payload: JwtPayload): Promise<User> {
-    const auth = await this.authService.findByUserId(payload.userId);
+    const auth = await this.authService.findWithUser({
+      user: { _id: payload.userId },
+    });
     return auth.user;
   }
 }

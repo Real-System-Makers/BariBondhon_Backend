@@ -52,6 +52,6 @@ export class AuthController {
 
   @Get('me')
   async getCurrentUser(@GetCurrentUser('_id') userId: string) {
-    return await this.authService.findByUserId(userId);
+    return await this.authService.findWithUser({ user: { _id: userId } });
   }
 }
