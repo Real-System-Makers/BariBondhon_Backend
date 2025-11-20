@@ -61,6 +61,21 @@ export class UserService {
     }
   }
 
+  async findOneUserByUserProperty(
+    property: keyof User,
+    value: User[keyof User],
+  ): Promise<User> {
+    try {
+      const user = await this.userModel.findOne({ [property]: value });
+      if (!user) {
+        throw new NotFoundException('user not found');
+      }
+      return user;
+    } catch {
+      throw new InternalServerErrorException('failed to find user');
+    }
+  }
+
   async updateUser(
     userId: string,
     updateUserDto: UpdateUserDto,

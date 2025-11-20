@@ -2,7 +2,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, PipelineStage } from 'mongoose';
+import { Model } from 'mongoose';
 import { Auth, AuthDocument } from './entities/auth.entity';
 import { TokenSecret, Tokens } from './types/tokens.type';
 import { SignUpDto } from './dto/sign-up.dto';
@@ -24,74 +24,8 @@ export class AuthService {
     @InjectModel(Auth.name) private readonly authModel: Model<AuthDocument>,
   ) {}
 
-  async findWithUser(
-    filter: {
-      auth?: Partial<Record<keyof Auth, any>>;
-      user?: Partial<Record<keyof User, any>>;
-    },
-    projection: {
-      auth?: Partial<Record<keyof Auth, 1 | 0 | true | false>>;
-      user?: Partial<Record<keyof User, 1 | 0 | true | false>>;
-    } = {},
-  ): Promise<AuthDocument & { user: User }> {
-    const pipeline: PipelineStage[] = [
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'user',
-          foreignField: '_id',
-          as: 'user',
-        },
-      },
-      { $unwind: '$user' },
-    ];
-
-    const matchStage: Record<string, any> = {};
-
-    if (filter.auth) {
-      Object.entries(filter.auth).forEach(([key, val]) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        matchStage[key] = val;
-      });
-    }
-
-    if (filter.user) {
-      Object.entries(filter.user).forEach(([key, val]) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        matchStage[`user.${key}`] = val;
-      });
-    }
-
-    if (Object.keys(matchStage).length > 0) {
-      pipeline.push({ $match: matchStage });
-    }
-
-    const projectStage: Record<string, any> = {};
-
-    if (projection.auth) {
-      Object.entries(projection.auth).forEach(([key, val]) => {
-        projectStage[key] = val;
-      });
-    }
-
-    if (projection.user) {
-      Object.entries(projection.user).forEach(([key, val]) => {
-        projectStage[`user.${key}`] = val;
-      });
-    }
-
-    if (Object.keys(projectStage).length > 0) {
-      pipeline.push({ $project: projectStage });
-    }
-
-    const result = await this.authModel.aggregate(pipeline).exec();
-    const authWithUser = result[0] as (AuthDocument & { user: User }) | null;
-
-    if (!authWithUser) {
-      throw new ForbiddenException('invalid credentials');
-    }
-
-    return authWithUser;
+  async findUser(userId: string): Promise<User> {
+    return await this.userService.findOneUserById(userId);
   }
 
   async signup(signUpDto: SignUpDto): Promise<Tokens> {
@@ -119,19 +53,15 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto): Promise<Tokens> {
-    const auth = await this.findWithUser(
-      { user: { email: loginDto.email } },
-      {
-        auth: { refreshToken: 1 },
-        user: { _id: 1, name: 1, email: 1, password: 1 },
-      },
+    const user = await this.userService.findOneUserByUserProperty(
+      'email',
+      loginDto.email,
     );
 
+    const auth = await this.authModel.findOne({ user: user._id });
     if (!auth) {
       throw new ForbiddenException('invalid credentials');
     }
-
-    const { user } = auth;
 
     const isPasswordMatch = await this.hashService.compareWithHash(
       loginDto.password,
