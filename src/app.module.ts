@@ -6,6 +6,7 @@ import { AtGuard } from './auth/guards/access-token.guard';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from './user/user.module';
 import { DBConfigService } from './db/db.config';
+import { FlatsModule } from './flats/flats.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { DBConfigService } from './db/db.config';
     }),
     AuthModule,
     UserModule,
+    FlatsModule,
   ],
   providers: [
     {
