@@ -22,6 +22,9 @@ export class Flat {
   @Prop({ required: true, enum: FlatStatus, default: FlatStatus.VACANT })
   status: FlatStatus;
 
+  @Prop({ required: false })
+  note: string;
+
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true })
   user: User;
 }

@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { FlatStatus } from '../types/flat-status.enum';
 
 export class CreateFlatDto {
@@ -20,4 +20,8 @@ export class CreateFlatDto {
 
   @IsEnum(FlatStatus)
   status: FlatStatus;
+
+  @IsString()
+  @IsOptional()
+  note?: string;
 }
