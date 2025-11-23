@@ -7,6 +7,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from './user/user.module';
 import { DBConfigService } from './db/db.config';
 import { FlatsModule } from './flats/flats.module';
+import { TenantsModule } from './tenants/tenants.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { FlatsModule } from './flats/flats.module';
     AuthModule,
     UserModule,
     FlatsModule,
+    TenantsModule,
   ],
   providers: [
     {

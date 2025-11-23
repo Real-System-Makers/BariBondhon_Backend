@@ -22,7 +22,7 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
-  address: string;
+  address?: string;
 
   @IsNotEmpty()
   @IsString()

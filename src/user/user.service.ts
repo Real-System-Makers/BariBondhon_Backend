@@ -33,6 +33,9 @@ export class UserService {
       name: createUserDto.name,
       email: createUserDto.email,
       password: hashedPassword,
+      phone: createUserDto.phone,
+      role: createUserDto.role,
+      address: createUserDto.address,
     });
 
     try {
@@ -106,5 +109,8 @@ export class UserService {
     } catch {
       throw new InternalServerErrorException('failed to remove user');
     }
+  }
+  async findAllByRole(role: string): Promise<User[]> {
+    return this.userModel.find({ role }).exec();
   }
 }

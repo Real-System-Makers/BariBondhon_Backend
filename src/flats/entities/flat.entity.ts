@@ -27,6 +27,9 @@ export class Flat {
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true })
   user: User;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false })
+  tenant: User;
 }
 
 export const FlatSchema = SchemaFactory.createForClass(Flat);

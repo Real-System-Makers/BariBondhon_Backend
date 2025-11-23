@@ -18,11 +18,17 @@ export class FlatsService {
   }
 
   async findAll(userId: string): Promise<Flat[]> {
-    return this.flatModel.find({ user: userId }).exec();
+    return this.flatModel
+      .find({ user: userId })
+      .populate('tenant', 'name email')
+      .exec();
   }
 
   async findOne(id: string, userId: string): Promise<Flat> {
-    const flat = await this.flatModel.findOne({ _id: id, user: userId }).exec();
+    const flat = await this.flatModel
+      .findOne({ _id: id, user: userId })
+      .populate('tenant', 'name email')
+      .exec();
     if (!flat) {
       throw new NotFoundException(`Flat with ID ${id} not found`);
     }
@@ -36,6 +42,7 @@ export class FlatsService {
   ): Promise<Flat> {
     const updatedFlat = await this.flatModel
       .findOneAndUpdate({ _id: id, user: userId }, updateFlatDto, { new: true })
+      .populate('tenant', 'name email')
       .exec();
     if (!updatedFlat) {
       throw new NotFoundException(`Flat with ID ${id} not found`);
