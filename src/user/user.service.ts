@@ -58,7 +58,10 @@ export class UserService {
 
   async findOneUserById(userId: string): Promise<User> {
     try {
-      const user = await this.userModel.findById(userId).populate('flat');
+      const user = await this.userModel
+        .findById(userId)
+        .populate('flat')
+        .populate('owner');
       if (!user) {
         throw new NotFoundException('user not found');
       }
@@ -78,7 +81,7 @@ export class UserService {
       if (withPassword) {
         query.select('+password');
       }
-      const user = await query.populate('flat').exec();
+      const user = await query.populate('flat').populate('owner').exec();
       if (!user) {
         throw new NotFoundException('user not found');
       }
@@ -110,6 +113,17 @@ export class UserService {
     }
   }
 
+  async assignFlat(userId: string, flatId: string): Promise<User> {
+    const user = await this.findOneUserById(userId);
+    user.flat = flatId;
+    try {
+      await this.userModel.findByIdAndUpdate(userId, user);
+      return await this.findOneUserById(userId);
+    } catch {
+      throw new InternalServerErrorException('failed to assign flat to user');
+    }
+  }
+
   async removeUser(userId: string): Promise<User> {
     const user = await this.findOneUserById(userId);
     try {
@@ -120,10 +134,14 @@ export class UserService {
     }
   }
   async findAllByRole(role: string): Promise<User[]> {
-    return this.userModel.find({ role }).exec();
+    return this.userModel.find({ role }).populate('flat').populate('owner').exec();
   }
 
   async findAllByRoleAndOwner(role: string, ownerId: string): Promise<User[]> {
-    return this.userModel.find({ role, owner: ownerId }).exec();
+    return this.userModel
+      .find({ role, owner: ownerId })
+      .populate('flat')
+      .populate('owner')
+      .exec();
   }
 }

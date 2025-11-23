@@ -69,6 +69,8 @@ export class TenantsService {
       flat.status = FlatStatus.OCCUPIED;
       await flat.save();
 
+      await this.userService.assignFlat(tenantId, flatId);
+
       return flat;
   }
 
