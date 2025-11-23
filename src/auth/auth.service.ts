@@ -56,6 +56,7 @@ export class AuthService {
     const user = await this.userService.findOneUserByUserProperty(
       'email',
       loginDto.email,
+      true,
     );
 
     const auth = await this.authModel.findOne({ user: user._id });

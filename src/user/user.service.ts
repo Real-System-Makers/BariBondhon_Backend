@@ -67,9 +67,14 @@ export class UserService {
   async findOneUserByUserProperty(
     property: keyof User,
     value: User[keyof User],
+    withPassword?: boolean,
   ): Promise<User> {
     try {
-      const user = await this.userModel.findOne({ [property]: value });
+      const query = this.userModel.findOne({ [property]: value });
+      if (withPassword) {
+        query.select('+password');
+      }
+      const user = await query.exec();
       if (!user) {
         throw new NotFoundException('user not found');
       }
