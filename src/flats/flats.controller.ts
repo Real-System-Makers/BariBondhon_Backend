@@ -11,13 +11,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { GetCurrentUser } from 'src/common/decorators/get-current-user.decorator';
-import { AtGuard } from 'src/auth/guards/access-token.guard';
 import { CreateFlatDto } from './dto/create-flat.dto';
 import { UpdateFlatDto } from './dto/update-flat.dto';
 import { FlatsService } from './flats.service';
 
 @Controller('flats')
-@UseGuards(AtGuard)
 export class FlatsController {
   constructor(private readonly flatsService: FlatsService) {}
 

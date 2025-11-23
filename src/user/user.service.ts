@@ -24,7 +24,10 @@ export class UserService {
     private readonly paginationService: PaginationService,
   ) {}
 
-  async createUser(createUserDto: CreateUserDto): Promise<User> {
+  async createUser(
+    createUserDto: CreateUserDto,
+    ownerId?: string,
+  ): Promise<User> {
     const hashedPassword = await this.hashService.hashString(
       createUserDto.password,
     );
@@ -36,6 +39,7 @@ export class UserService {
       phone: createUserDto.phone,
       role: createUserDto.role,
       address: createUserDto.address,
+      owner: ownerId,
     });
 
     try {
@@ -117,5 +121,9 @@ export class UserService {
   }
   async findAllByRole(role: string): Promise<User[]> {
     return this.userModel.find({ role }).exec();
+  }
+
+  async findAllByRoleAndOwner(role: string, ownerId: string): Promise<User[]> {
+    return this.userModel.find({ role, owner: ownerId }).exec();
   }
 }

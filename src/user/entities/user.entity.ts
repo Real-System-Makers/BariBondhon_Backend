@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, InferSchemaType } from 'mongoose';
+import * as mongoose from 'mongoose';
 import { AbstractEntity } from 'src/db/abstract.entity';
 import { Role } from 'src/common/types/role.enum';
 
@@ -22,6 +23,9 @@ export class User extends AbstractEntity<User> {
 
   @Prop({ required: true, enum: Role })
   role: Role;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false })
+  owner: User;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

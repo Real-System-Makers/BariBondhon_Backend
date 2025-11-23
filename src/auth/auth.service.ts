@@ -28,14 +28,14 @@ export class AuthService {
     return await this.userService.findOneUserById(userId);
   }
 
-  async signup(signUpDto: SignUpDto): Promise<Tokens> {
+  async signup(signUpDto: SignUpDto, ownerId?: string): Promise<Tokens> {
     if (signUpDto.password !== signUpDto.confirmPassword) {
       throw new ForbiddenException({
         confirmPassword: 'passwords do not match',
       });
     }
 
-    const user = await this.userService.createUser(signUpDto);
+    const user = await this.userService.createUser(signUpDto, ownerId);
 
     const tokens = await this.getTokens(user._id);
     const hashedRefreshToken = await this.hashService.hashString(

@@ -17,7 +17,7 @@ export class TenantsService {
     @InjectModel(Flat.name) private flatModel: Model<FlatDocument>,
   ) {}
 
-  async create(createTenantDto: CreateTenantDto) {
+  async create(createTenantDto: CreateTenantDto, ownerId: string) {
     const { name, email, phone } = createTenantDto;
 
     try {
@@ -46,7 +46,7 @@ export class TenantsService {
         confirmPassword: phone,
         role: Role.TENANT,
         address: '',
-    });
+    }, ownerId);
 
     const newUser = await this.userService.findOneUserByUserProperty('email', email);
     return newUser;
@@ -72,8 +72,8 @@ export class TenantsService {
       return flat;
   }
 
-  async findAll() {
-    const tenants = await this.userService.findAllByRole(Role.TENANT);
+  async findAll(ownerId: string) {
+    const tenants = await this.userService.findAllByRoleAndOwner(Role.TENANT, ownerId);
     
     const tenantsWithFlats = await Promise.all(
       tenants.map(async (tenant) => {

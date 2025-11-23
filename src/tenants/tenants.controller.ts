@@ -1,18 +1,20 @@
-import { Controller, Post, Body, Get, HttpCode, HttpStatus, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Get, HttpCode, HttpStatus, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { TenantsService } from './tenants.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { GetCurrentUser } from '../common/decorators/get-current-user.decorator';
 import { AssignTenantDto } from './dto/assign-tenant.dto';
-
 @Controller('tenants')
 export class TenantsController {
   constructor(private readonly tenantsService: TenantsService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() createTenantDto: CreateTenantDto) {
-    return this.tenantsService.create(createTenantDto);
+  create(
+    @Body() createTenantDto: CreateTenantDto,
+    @GetCurrentUser('_id') userId: string,
+  ) {
+    return this.tenantsService.create(createTenantDto, userId);
   }
 
   @Post('assign')
@@ -30,8 +32,8 @@ export class TenantsController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  findAll() {
-    return this.tenantsService.findAll();
+  findAll(@GetCurrentUser('_id') userId: string) {
+    return this.tenantsService.findAll(userId);
   }
 
   @Patch(':id')
