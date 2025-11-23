@@ -30,6 +30,19 @@ export class Flat {
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false })
   tenant: User;
+
+  // Electricity tracking
+  @Prop({ required: false, default: 0 })
+  previousElectricityReading: number;
+
+  @Prop({ required: false, default: 0 })
+  currentElectricityReading: number;
+
+  @Prop({ required: false, default: 8 }) // BDT per unit - typical rate in Bangladesh
+  electricityRatePerUnit: number;
+
+  @Prop({ required: false })
+  lastElectricityUpdateDate: Date;
 }
 
 export const FlatSchema = SchemaFactory.createForClass(Flat);

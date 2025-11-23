@@ -8,10 +8,15 @@ import { UserModule } from './user/user.module';
 import { DBConfigService } from './db/db.config';
 import { FlatsModule } from './flats/flats.module';
 import { TenantsModule } from './tenants/tenants.module';
+import { RentsModule } from './rents/rents.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { NotificationsModule } from './notifications/notifications.module';
+import { HousesModule } from './houses/houses.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     MongooseModule.forRootAsync({
       useClass: DBConfigService,
     }),
@@ -19,6 +24,9 @@ import { TenantsModule } from './tenants/tenants.module';
     UserModule,
     FlatsModule,
     TenantsModule,
+    RentsModule,
+    NotificationsModule,
+    HousesModule,
   ],
   providers: [
     {
@@ -28,3 +36,6 @@ import { TenantsModule } from './tenants/tenants.module';
   ],
 })
 export class AppModule {}
+
+
+

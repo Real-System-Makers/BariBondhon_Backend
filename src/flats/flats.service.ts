@@ -86,4 +86,66 @@ export class FlatsService {
     }
     return deletedFlat;
   }
+
+  /**
+   * Update electricity reading for a single flat
+   */
+  async updateElectricityReading(
+    flatId: string,
+    currentReading: number,
+    userId: string,
+    ratePerUnit?: number,
+  ): Promise<Flat> {
+    const flat = await this.flatModel.findOne({ _id: flatId, user: userId });
+    if (!flat) {
+      throw new NotFoundException(`Flat with ID ${flatId} not found`);
+    }
+
+    // Move current to previous and update current
+    flat.previousElectricityReading = flat.currentElectricityReading;
+    flat.currentElectricityReading = currentReading;
+    flat.lastElectricityUpdateDate = new Date();
+    
+    if (ratePerUnit !== undefined) {
+      flat.electricityRatePerUnit = ratePerUnit;
+    }
+
+    return flat.save();
+  }
+
+  /**
+   * Batch update electricity readings for multiple flats
+   */
+  async batchUpdateElectricity(
+    updates: { flatId: string; currentReading: number }[],
+    userId: string,
+  ): Promise<{ updated: number; failed: string[] }> {
+    let updated = 0;
+    const failed: string[] = [];
+
+    for (const update of updates) {
+      try {
+        await this.updateElectricityReading(
+          update.flatId,
+          update.currentReading,
+          userId,
+        );
+        updated++;
+      } catch (error) {
+        failed.push(update.flatId);
+      }
+    }
+
+    return { updated, failed };
+  }
+
+  /**
+   * Calculate electricity bill for a flat based on consumption
+   */
+  calculateElectricityBill(flat: Flat): number {
+    const consumption =
+      flat.currentElectricityReading - flat.previousElectricityReading;
+    return Math.max(0, consumption * flat.electricityRatePerUnit);
+  }
 }
+

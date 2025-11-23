@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { Auth, AuthSchema } from './entities/auth.entity';
+import { RentConfig, RentConfigSchema } from '../rents/entities/rent-config.entity';
 import { AtStrategy } from './strategies/access-token.strategies';
 import { RtStrategy } from './strategies/refresh-token.strategies';
 import { UserModule } from 'src/user/user.module';
@@ -12,7 +13,10 @@ import { HashService } from 'src/common/services/hash.service';
 @Module({
   imports: [
     JwtModule.register({}),
-    MongooseModule.forFeature([{ name: Auth.name, schema: AuthSchema }]),
+    MongooseModule.forFeature([
+      { name: Auth.name, schema: AuthSchema },
+      { name: RentConfig.name, schema: RentConfigSchema },
+    ]),
     UserModule,
   ],
   providers: [AuthService, HashService, AtStrategy, RtStrategy],
