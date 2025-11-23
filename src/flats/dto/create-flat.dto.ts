@@ -24,4 +24,8 @@ export class CreateFlatDto {
   @IsString()
   @IsOptional()
   note?: string;
+
+  @IsString()
+  @IsOptional()
+  tenant?: string;
 }

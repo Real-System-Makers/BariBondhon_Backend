@@ -58,7 +58,7 @@ export class UserService {
 
   async findOneUserById(userId: string): Promise<User> {
     try {
-      const user = await this.userModel.findById(userId);
+      const user = await this.userModel.findById(userId).populate('flat');
       if (!user) {
         throw new NotFoundException('user not found');
       }
@@ -78,7 +78,7 @@ export class UserService {
       if (withPassword) {
         query.select('+password');
       }
-      const user = await query.exec();
+      const user = await query.populate('flat').exec();
       if (!user) {
         throw new NotFoundException('user not found');
       }

@@ -5,9 +5,15 @@ import { CreateFlatDto } from './dto/create-flat.dto';
 import { UpdateFlatDto } from './dto/update-flat.dto';
 import { Flat, FlatDocument } from './entities/flat.entity';
 
+import { User, UserDocument } from 'src/user/entities/user.entity';
+
+
 @Injectable()
 export class FlatsService {
-  constructor(@InjectModel(Flat.name) private flatModel: Model<FlatDocument>) {}
+  constructor(
+    @InjectModel(Flat.name) private flatModel: Model<FlatDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+  ) {}
 
   async create(createFlatDto: CreateFlatDto, userId: string): Promise<Flat> {
     const createdFlat = new this.flatModel({
@@ -40,6 +46,27 @@ export class FlatsService {
     updateFlatDto: UpdateFlatDto,
     userId: string,
   ): Promise<Flat> {
+    if (updateFlatDto.tenant !== undefined) {
+      const currentFlat = await this.flatModel.findOne({
+        _id: id,
+        user: userId,
+      });
+
+      if (currentFlat) {
+        if (currentFlat.tenant) {
+          await this.userModel.findByIdAndUpdate(currentFlat.tenant, {
+            flat: null,
+          });
+        }
+
+        if (updateFlatDto.tenant) {
+          await this.userModel.findByIdAndUpdate(updateFlatDto.tenant, {
+            flat: id,
+          });
+        }
+      }
+    }
+
     const updatedFlat = await this.flatModel
       .findOneAndUpdate({ _id: id, user: userId }, updateFlatDto, { new: true })
       .populate('tenant', 'name email')
