@@ -109,6 +109,68 @@ export class RentAutomationService {
   }
 
   /**
+   * Cleanup orphaned and unpaid rents for vacant flats
+   * Runs daily at 00:15 AM
+   */
+  @Cron('15 0 * * *', {
+    name: 'cleanup-orphaned-rents',
+    timeZone: 'Asia/Dhaka',
+  })
+  async handleRentCleanup() {
+    this.logger.log('Starting rent cleanup for vacant flats...');
+
+    try {
+      let totalDeleted = 0;
+
+      const vacantFlats = await this.flatModel.find({
+        status: FlatStatus.VACANT,
+      });
+
+      this.logger.log(`Found ${vacantFlats.length} vacant flats`);
+
+      for (const flat of vacantFlats) {
+        const result = await this.rentModel.deleteMany({
+          flat: flat._id,
+          status: { $in: [RentStatus.PENDING, RentStatus.PARTIAL, RentStatus.OVERDUE] },
+          dueAmount: { $gt: 0 },
+        });
+
+        if (result.deletedCount > 0) {
+          totalDeleted += result.deletedCount;
+          this.logger.log(
+            `Cleaned up ${result.deletedCount} unpaid rent(s) for vacant flat ${flat._id}`,
+          );
+        }
+      }
+
+      const orphanedRents = await this.rentModel.find({
+        status: { $in: [RentStatus.PENDING, RentStatus.PARTIAL, RentStatus.OVERDUE] },
+        dueAmount: { $gt: 0 },
+      }).populate('flat');
+
+      let orphanedDeleted = 0;
+      for (const rent of orphanedRents) {
+        const flat = rent.flat as any;
+        if (!flat || !flat.tenant) {
+          await this.rentModel.deleteOne({ _id: rent._id });
+          orphanedDeleted++;
+        }
+      }
+
+      if (orphanedDeleted > 0) {
+        totalDeleted += orphanedDeleted;
+        this.logger.log(`Cleaned up ${orphanedDeleted} orphaned rent(s)`);
+      }
+
+      this.logger.log(
+        `Rent cleanup completed. Total deleted: ${totalDeleted}`,
+      );
+    } catch (error) {
+      this.logger.error('Error in rent cleanup:', error);
+    }
+  }
+
+  /**
    * Generate rents for a specific owner based on their config
    */
   private async generateRentsForOwner(config: RentConfigDocument) {

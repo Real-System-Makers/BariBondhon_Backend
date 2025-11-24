@@ -1,18 +1,23 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateFlatDto } from './dto/create-flat.dto';
 import { UpdateFlatDto } from './dto/update-flat.dto';
 import { Flat, FlatDocument } from './entities/flat.entity';
-
+import { Rent, RentDocument } from '../rents/entities/rent.entity';
+import { RentStatus } from '../rents/types/rent-status.enum';
+import { FlatStatus } from './types/flat-status.enum';
 import { User, UserDocument } from 'src/user/entities/user.entity';
 
 
 @Injectable()
 export class FlatsService {
+  private readonly logger = new Logger(FlatsService.name);
+
   constructor(
     @InjectModel(Flat.name) private flatModel: Model<FlatDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Rent.name) private rentModel: Model<RentDocument>,
   ) {}
 
   async create(createFlatDto: CreateFlatDto, userId: string): Promise<Flat> {
@@ -46,24 +51,38 @@ export class FlatsService {
     updateFlatDto: UpdateFlatDto,
     userId: string,
   ): Promise<Flat> {
+    const currentFlat = await this.flatModel.findOne({
+      _id: id,
+      user: userId,
+    });
+
+    if (!currentFlat) {
+      throw new NotFoundException(`Flat with ID ${id} not found`);
+    }
+
+    const isBecomingVacant =
+      (updateFlatDto.status === FlatStatus.VACANT &&
+        currentFlat.status !== FlatStatus.VACANT) ||
+      (updateFlatDto.tenant === null && currentFlat.tenant !== null) ||
+      (updateFlatDto.tenant === undefined &&
+        updateFlatDto.status === FlatStatus.VACANT &&
+        currentFlat.status !== FlatStatus.VACANT);
+
+    if (isBecomingVacant) {
+      await this.cleanupUnpaidRentsForFlat(id);
+    }
+
     if (updateFlatDto.tenant !== undefined) {
-      const currentFlat = await this.flatModel.findOne({
-        _id: id,
-        user: userId,
-      });
+      if (currentFlat.tenant) {
+        await this.userModel.findByIdAndUpdate(currentFlat.tenant, {
+          flat: null,
+        });
+      }
 
-      if (currentFlat) {
-        if (currentFlat.tenant) {
-          await this.userModel.findByIdAndUpdate(currentFlat.tenant, {
-            flat: null,
-          });
-        }
-
-        if (updateFlatDto.tenant) {
-          await this.userModel.findByIdAndUpdate(updateFlatDto.tenant, {
-            flat: id,
-          });
-        }
+      if (updateFlatDto.tenant) {
+        await this.userModel.findByIdAndUpdate(updateFlatDto.tenant, {
+          flat: id,
+        });
       }
     }
 
@@ -146,6 +165,30 @@ export class FlatsService {
     const consumption =
       flat.currentElectricityReading - flat.previousElectricityReading;
     return Math.max(0, consumption * flat.electricityRatePerUnit);
+  }
+
+  /**
+   * Cleanup unpaid rents for a flat when it becomes vacant
+   */
+  private async cleanupUnpaidRentsForFlat(flatId: string): Promise<void> {
+    try {
+      const result = await this.rentModel.deleteMany({
+        flat: flatId,
+        status: { $in: [RentStatus.PENDING, RentStatus.PARTIAL, RentStatus.OVERDUE] },
+        dueAmount: { $gt: 0 },
+      });
+
+      if (result.deletedCount > 0) {
+        this.logger.log(
+          `Cleaned up ${result.deletedCount} unpaid rent(s) for flat ${flatId}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error cleaning up rents for flat ${flatId}:`,
+        error,
+      );
+    }
   }
 }
 
