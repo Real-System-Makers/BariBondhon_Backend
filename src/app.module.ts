@@ -12,6 +12,7 @@ import { RentsModule } from './rents/rents.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HousesModule } from './houses/houses.module';
+import { NoticesModule } from './notices/notices.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { HousesModule } from './houses/houses.module';
     RentsModule,
     NotificationsModule,
     HousesModule,
+    NoticesModule,
   ],
   providers: [
     {
