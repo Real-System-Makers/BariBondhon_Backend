@@ -26,7 +26,6 @@ export class NotificationsService {
     const {
       recipientId,
       relatedRentId,
-      relatedBillingId,
       ...notificationData
     } = createNotificationDto;
 
@@ -34,7 +33,6 @@ export class NotificationsService {
       ...notificationData,
       recipient: recipientId,
       relatedRent: relatedRentId,
-      relatedBilling: relatedBillingId,
       priority:
         createNotificationDto.priority || NotificationPriority.MEDIUM,
       channels: createNotificationDto.channels || ['in-app'],
@@ -75,7 +73,6 @@ export class NotificationsService {
     return this.notificationModel
       .find(query)
       .populate('relatedRent')
-      .populate('relatedBilling')
       .sort({ createdAt: -1 })
       .limit(50)
       .exec();
