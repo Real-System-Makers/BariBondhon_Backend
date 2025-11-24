@@ -2,7 +2,10 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { RentConfig, RentConfigDocument } from '../rents/entities/rent-config.entity';
+import {
+  RentConfig,
+  RentConfigDocument,
+} from '../rents/entities/rent-config.entity';
 import { JwtService } from '@nestjs/jwt';
 
 import { Auth, AuthDocument } from './entities/auth.entity';
@@ -15,6 +18,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { TokenExpiration, TokenType } from './types/tokens.type';
 import { JwtPayload } from './types/jwt-payload.type';
 import { User } from 'src/user/entities/user.entity';
+import { Role } from 'src/common/types/role.enum';
 
 @Injectable()
 export class AuthService {
@@ -24,7 +28,8 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly hashService: HashService,
     @InjectModel(Auth.name) private readonly authModel: Model<AuthDocument>,
-    @InjectModel(RentConfig.name) private readonly rentConfigModel: Model<RentConfigDocument>,
+    @InjectModel(RentConfig.name)
+    private readonly rentConfigModel: Model<RentConfigDocument>,
   ) {}
 
   async findUser(userId: string): Promise<User> {
@@ -50,7 +55,9 @@ export class AuthService {
     try {
       await auth.save();
       // Create default rent configuration for the new owner
-      await this.rentConfigModel.create({ owner: user._id });
+      if (user.role === Role.OWNER) {
+        await this.rentConfigModel.create({ owner: user._id });
+      }
       return tokens;
     } catch {
       throw new ForbiddenException('signup failed');
