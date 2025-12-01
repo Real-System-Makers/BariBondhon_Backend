@@ -20,10 +20,6 @@ export class CreateUserDto {
   @IsString()
   password: string;
 
-  @IsOptional()
-  @IsString()
-  address?: string;
-
   @IsNotEmpty()
   @IsString()
   phone: string;

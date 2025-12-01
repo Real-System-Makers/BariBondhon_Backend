@@ -15,6 +15,7 @@ import { PaginationDto } from 'src/common/dtos/pagination.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserDocument } from './entities/user.entity';
+import { HousesService } from '../houses/houses.service';
 
 @Injectable()
 export class UserService {
@@ -22,6 +23,7 @@ export class UserService {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     private readonly hashService: HashService,
     private readonly paginationService: PaginationService,
+    private readonly housesService: HousesService,
   ) {}
 
   async createUser(
@@ -38,7 +40,6 @@ export class UserService {
       password: hashedPassword,
       phone: createUserDto.phone,
       role: createUserDto.role,
-      address: createUserDto.address,
       owner: ownerId,
     });
 
@@ -61,10 +62,25 @@ export class UserService {
       const user = await this.userModel
         .findById(userId)
         .populate('flat')
-        .populate('owner');
+        .populate('owner')
+        .exec();
       if (!user) {
         throw new NotFoundException('user not found');
       }
+
+      // If user has an owner (tenant), populate owner's house
+      if (user.owner && typeof user.owner === 'object' && '_id' in user.owner) {
+        try {
+          const ownerHouse = await this.housesService.findOrCreate(
+            (user.owner as any)._id.toString(),
+          );
+          // Attach house to owner object
+          (user.owner as any).house = ownerHouse;
+        } catch {
+          // If house doesn't exist or error occurs, continue without house
+        }
+      }
+
       return user;
     } catch {
       throw new InternalServerErrorException('failed to find user');
@@ -85,6 +101,20 @@ export class UserService {
       if (!user) {
         throw new NotFoundException('user not found');
       }
+
+      // If user has an owner (tenant), populate owner's house
+      if (user.owner && typeof user.owner === 'object' && '_id' in user.owner) {
+        try {
+          const ownerHouse = await this.housesService.findOrCreate(
+            (user.owner as any)._id.toString(),
+          );
+          // Attach house to owner object
+          (user.owner as any).house = ownerHouse;
+        } catch {
+          // If house doesn't exist or error occurs, continue without house
+        }
+      }
+
       return user;
     } catch {
       throw new InternalServerErrorException('failed to find user');

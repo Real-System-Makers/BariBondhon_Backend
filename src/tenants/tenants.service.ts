@@ -64,7 +64,6 @@ export class TenantsService {
         password: phone,
         confirmPassword: phone,
         role: Role.TENANT,
-        address: '',
       },
       ownerId,
     );

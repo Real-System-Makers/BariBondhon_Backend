@@ -5,10 +5,12 @@ import { User, UserSchema } from './entities/user.entity';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HashService } from 'src/common/services/hash.service';
 import { PaginationService } from 'src/common/services/pagination.service';
+import { HousesModule } from '../houses/houses.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    HousesModule,
   ],
   controllers: [UserController],
   providers: [UserService, HashService, PaginationService],
