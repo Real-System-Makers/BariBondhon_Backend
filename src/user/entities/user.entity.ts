@@ -29,6 +29,9 @@ export class User extends AbstractEntity<User> {
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Flat', required: false })
   flat: any;
+
+  @Prop({ default: 1 })
+  minimumNoticePeriod: number;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

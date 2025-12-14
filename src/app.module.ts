@@ -15,6 +15,7 @@ import { HousesModule } from './houses/houses.module';
 import { NoticesModule } from './notices/notices.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { StatsModule } from './stats/stats.module';
+import { MoveOutModule } from './move-out/move-out.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { StatsModule } from './stats/stats.module';
     NoticesModule,
     MaintenanceModule,
     StatsModule,
+    MoveOutModule,
   ],
   providers: [
     {

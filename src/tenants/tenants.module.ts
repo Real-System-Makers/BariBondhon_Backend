@@ -16,5 +16,6 @@ import { Rent, RentSchema } from '../rents/entities/rent.entity';
   ],
   controllers: [TenantsController],
   providers: [TenantsService],
+  exports: [TenantsService],
 })
 export class TenantsModule {}
