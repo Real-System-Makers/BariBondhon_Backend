@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { GetCurrentUser } from 'src/common/decorators/get-current-user.decorator';
+import { Public } from 'src/common/decorators/public.decorator';
 import { CreateFlatDto } from './dto/create-flat.dto';
 import { UpdateFlatDto } from './dto/update-flat.dto';
 import { UpdateElectricityDto } from './dto/update-electricity.dto';
@@ -19,7 +20,7 @@ import { FlatsService } from './flats.service';
 
 @Controller('flats')
 export class FlatsController {
-  constructor(private readonly flatsService: FlatsService) {}
+  constructor(private readonly flatsService: FlatsService) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -28,6 +29,13 @@ export class FlatsController {
     @GetCurrentUser('_id') userId: string,
   ) {
     return this.flatsService.create(createFlatDto, userId);
+  }
+
+  @Public()
+  @Get('public/vacant')
+  @HttpCode(HttpStatus.OK)
+  findVacant() {
+    return this.flatsService.findVacant();
   }
 
   @Get()

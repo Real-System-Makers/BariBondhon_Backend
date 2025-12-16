@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { Document } from 'mongoose';
 import { User } from '../../user/entities/user.entity';
-import { BillingSystem } from '../enums/billing-system.enum';
 
 export type HouseDocument = House & Document;
 
@@ -28,8 +27,7 @@ export class House {
   @Prop({ required: false })
   address?: string;
 
-  @Prop({ type: String, enum: BillingSystem, default: BillingSystem.POSTPAID })
-  billingSystem: BillingSystem;
+  @Prop({ required: false })
 
   @Prop({ required: false })
   registrationNumber?: string;

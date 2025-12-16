@@ -46,6 +46,14 @@ export class FlatsService {
     return flat;
   }
 
+  async findVacant() {
+    return this.flatModel
+      .find({ status: FlatStatus.VACANT })
+      .populate('user', 'name phone email -_id')
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
   async update(
     id: string,
     updateFlatDto: UpdateFlatDto,

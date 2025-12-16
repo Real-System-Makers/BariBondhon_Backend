@@ -32,6 +32,17 @@ export class User extends AbstractEntity<User> {
 
   @Prop({ default: 1 })
   minimumNoticePeriod: number;
+
+  @Prop({ required: false })
+  bKashNumber?: string;
+
+  @Prop({ type: Object, required: false })
+  bankDetails?: {
+    accountName: string;
+    accountNumber: string;
+    bankName: string;
+    branchName: string;
+  };
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

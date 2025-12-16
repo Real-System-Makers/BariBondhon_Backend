@@ -1,12 +1,10 @@
 import {
-  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   Min,
 } from 'class-validator';
-import { BillingSystem } from '../enums/billing-system.enum';
 
 export class CreateHouseDto {
   @IsOptional()
@@ -34,10 +32,6 @@ export class CreateHouseDto {
   @IsNotEmpty()
   @IsString()
   address: string;
-
-  @IsOptional()
-  @IsEnum(BillingSystem)
-  billingSystem?: BillingSystem;
 
   @IsNotEmpty()
   @IsString()
