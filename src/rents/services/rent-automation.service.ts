@@ -9,6 +9,7 @@ import { RentStatus } from '../types/rent-status.enum';
 import { FlatStatus } from '../../flats/types/flat-status.enum';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { NotificationType, NotificationPriority } from '../../notifications/types/notification.enum';
+import { User, UserDocument } from '../../user/entities/user.entity';
 
 @Injectable()
 export class RentAutomationService {
@@ -19,8 +20,9 @@ export class RentAutomationService {
     @InjectModel(RentConfig.name)
     private rentConfigModel: Model<RentConfigDocument>,
     @InjectModel(Flat.name) private flatModel: Model<FlatDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
     private notificationsService: NotificationsService,
-  ) {}
+  ) { }
 
   /**
    * Generate monthly rents automatically
@@ -199,7 +201,7 @@ export class RentAutomationService {
     const House = this.flatModel.db.model('House');
     let waterBill = 0;
     let gasBill = 0;
-    
+
     try {
       const house = await House.findOne({ user: config.owner });
       if (house) {
@@ -208,6 +210,17 @@ export class RentAutomationService {
       }
     } catch (error) {
       this.logger.warn(`Could not fetch house data for owner ${config.owner}`);
+    }
+
+    // Get owner's electricity slabs
+    let electricitySlabs: { from: number; to: number; rate: number }[] = [];
+    try {
+      const ownerUser = await this.userModel.findById(config.owner);
+      if (ownerUser && ownerUser.electricitySlabs) {
+        electricitySlabs = ownerUser.electricitySlabs;
+      }
+    } catch (e) {
+      this.logger.warn(`Could not fetch owner data for ${config.owner}`);
     }
 
     // Find all occupied flats for this owner
@@ -240,7 +253,20 @@ export class RentAutomationService {
         0,
         (flat.currentElectricityReading || 0) - (flat.previousElectricityReading || 0)
       );
-      const electricityBill = electricityConsumption * (flat.electricityRatePerUnit || 8);
+
+      let electricityBill = 0;
+      if (electricitySlabs && electricitySlabs.length > 0) {
+        const sortedSlabs = [...electricitySlabs].sort((a, b) => a.from - b.from);
+        let totalBill = 0;
+        for (const slab of sortedSlabs) {
+          const lowerBound = slab.from === 0 ? 0 : slab.from - 1;
+          const unitsInSlab = Math.max(0, Math.min(electricityConsumption, slab.to) - lowerBound);
+          totalBill += unitsInSlab * slab.rate;
+        }
+        electricityBill = totalBill;
+      } else {
+        electricityBill = electricityConsumption * (flat.electricityRatePerUnit || 8);
+      }
 
       // Calculate total amount
       const baseRent = flat.rent;

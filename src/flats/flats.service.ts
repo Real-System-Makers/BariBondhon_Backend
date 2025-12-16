@@ -18,7 +18,7 @@ export class FlatsService {
     @InjectModel(Flat.name) private flatModel: Model<FlatDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Rent.name) private rentModel: Model<RentDocument>,
-  ) {}
+  ) { }
 
   async create(createFlatDto: CreateFlatDto, userId: string): Promise<Flat> {
     const createdFlat = new this.flatModel({
@@ -68,25 +68,28 @@ export class FlatsService {
       throw new NotFoundException(`Flat with ID ${id} not found`);
     }
 
-    const isBecomingVacant =
-      (updateFlatDto.status === FlatStatus.VACANT &&
-        currentFlat.status !== FlatStatus.VACANT) ||
-      (updateFlatDto.tenant === null && currentFlat.tenant !== null) ||
-      (updateFlatDto.tenant === undefined &&
-        updateFlatDto.status === FlatStatus.VACANT &&
-        currentFlat.status !== FlatStatus.VACANT);
+    if (updateFlatDto.status === FlatStatus.VACANT) {
+      // Ensure data consistency: Remove this flat from ANY user who claims it
+      await this.userModel.updateMany({ flat: id }, { flat: null });
 
-    if (isBecomingVacant) {
-      await this.cleanupUnpaidRentsForFlat(id);
+      if (currentFlat.status !== FlatStatus.VACANT) {
+        wait this.cleanupUnpaidRentsForFlat(id);
+      }
+
+      // Ensure tenant is removed when flat becomes vacant
+      (updateFlatDto as any).tenant = null;
     }
 
+    // Handle tenant assignment/unassignment
     if (updateFlatDto.tenant !== undefined) {
+      // If there was a previous tenant, remove the flat from their record
       if (currentFlat.tenant) {
         await this.userModel.findByIdAndUpdate(currentFlat.tenant, {
           flat: null,
         });
       }
 
+      // If a new tenant is being assigned, add the flat to their record
       if (updateFlatDto.tenant) {
         await this.userModel.findByIdAndUpdate(updateFlatDto.tenant, {
           flat: id,
@@ -132,7 +135,7 @@ export class FlatsService {
     flat.previousElectricityReading = flat.currentElectricityReading;
     flat.currentElectricityReading = currentReading;
     flat.lastElectricityUpdateDate = new Date();
-    
+
     if (ratePerUnit !== undefined) {
       flat.electricityRatePerUnit = ratePerUnit;
     }
