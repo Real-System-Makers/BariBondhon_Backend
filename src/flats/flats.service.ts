@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateFlatDto } from './dto/create-flat.dto';
@@ -8,15 +8,16 @@ import { Rent, RentDocument } from '../rents/entities/rent.entity';
 import { RentStatus } from '../rents/types/rent-status.enum';
 import { FlatStatus } from './types/flat-status.enum';
 import { User, UserDocument } from 'src/user/entities/user.entity';
+import { ToLetService } from '../to-let/to-let.service';
 
 
 @Injectable()
 export class FlatsService {
-  private readonly logger = new Logger(FlatsService.name);
 
   constructor(
     @InjectModel(Flat.name) private flatModel: Model<FlatDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private readonly toLetService: ToLetService,
     @InjectModel(Rent.name) private rentModel: Model<RentDocument>,
   ) { }
 
@@ -104,6 +105,10 @@ export class FlatsService {
     if (!updatedFlat) {
       throw new NotFoundException(`Flat with ID ${id} not found`);
     }
+
+    // Real-time To-Let update
+    await this.toLetService.updateVacancyStatus(id);
+
     return updatedFlat;
   }
 

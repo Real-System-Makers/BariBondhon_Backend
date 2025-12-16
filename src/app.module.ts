@@ -16,6 +16,7 @@ import { NoticesModule } from './notices/notices.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { StatsModule } from './stats/stats.module';
 import { MoveOutModule } from './move-out/move-out.module';
+import { ToLetModule } from './to-let/to-let.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { MoveOutModule } from './move-out/move-out.module';
     MaintenanceModule,
     StatsModule,
     MoveOutModule,
+    ToLetModule,
   ],
   providers: [
     {
@@ -43,7 +45,7 @@ import { MoveOutModule } from './move-out/move-out.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }
 
 
 
