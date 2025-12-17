@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateFlatDto } from './dto/create-flat.dto';
@@ -9,16 +9,19 @@ import { RentStatus } from '../rents/types/rent-status.enum';
 import { FlatStatus } from './types/flat-status.enum';
 import { User, UserDocument } from 'src/user/entities/user.entity';
 import { ToLetService } from '../to-let/to-let.service';
+import { MoveOutRequest, MoveOutRequestDocument, MoveOutRequestStatus } from '../move-out/entities/move-out-request.entity';
 
 
 @Injectable()
 export class FlatsService {
+  private readonly logger = new Logger(FlatsService.name);
 
   constructor(
     @InjectModel(Flat.name) private flatModel: Model<FlatDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    private readonly toLetService: ToLetService,
     @InjectModel(Rent.name) private rentModel: Model<RentDocument>,
+    @InjectModel(MoveOutRequest.name) private moveOutRequestModel: Model<MoveOutRequestDocument>,
+    private readonly toLetService: ToLetService,
   ) { }
 
   async create(createFlatDto: CreateFlatDto, userId: string): Promise<Flat> {
@@ -69,12 +72,35 @@ export class FlatsService {
       throw new NotFoundException(`Flat with ID ${id} not found`);
     }
 
+    // NOTICE PERIOD ENFORCEMENT: Prevent premature vacancy
     if (updateFlatDto.status === FlatStatus.VACANT) {
+      // Check if there's an APPROVED moveout request for this flat
+      const approvedRequest = await this.moveOutRequestModel.findOne({
+        flat: id,
+        status: MoveOutRequestStatus.APPROVED,
+      });
+
+      if (approvedRequest) {
+        const moveOutDate = new Date(approvedRequest.moveOutMonth);
+        const now = new Date();
+
+        // Normalize both dates to first of month for comparison
+        moveOutDate.setDate(1);
+        moveOutDate.setHours(0, 0, 0, 0);
+        const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        if (currentMonth < moveOutDate) {
+          throw new BadRequestException(
+            `Cannot mark flat as vacant until moveout date: ${moveOutDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}. Notice period must be respected.`,
+          );
+        }
+      }
+
       // Ensure data consistency: Remove this flat from ANY user who claims it
       await this.userModel.updateMany({ flat: id }, { flat: null });
 
       if (currentFlat.status !== FlatStatus.VACANT) {
-        wait this.cleanupUnpaidRentsForFlat(id);
+        await this.cleanupUnpaidRentsForFlat(id);
       }
 
       // Ensure tenant is removed when flat becomes vacant

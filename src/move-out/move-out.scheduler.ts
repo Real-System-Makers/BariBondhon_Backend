@@ -3,7 +3,10 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { MoveOutRequest, MoveOutRequestDocument, MoveOutRequestStatus } from './entities/move-out-request.entity';
-import { TenantsService } from '../tenants/tenants.service';
+import { Flat, FlatDocument } from '../flats/entities/flat.entity';
+import { User, UserDocument } from '../user/entities/user.entity';
+import { FlatStatus } from '../flats/types/flat-status.enum';
+import { ToLetService } from '../to-let/to-let.service';
 
 @Injectable()
 export class MoveOutScheduler {
@@ -12,7 +15,11 @@ export class MoveOutScheduler {
   constructor(
     @InjectModel(MoveOutRequest.name)
     private moveOutRequestModel: Model<MoveOutRequestDocument>,
-    private tenantsService: TenantsService,
+    @InjectModel(Flat.name)
+    private flatModel: Model<FlatDocument>,
+    @InjectModel(User.name)
+    private userModel: Model<UserDocument>,
+    private readonly toLetService: ToLetService,
   ) {}
 
   // Run at midnight on the 1st of every month
@@ -21,8 +28,7 @@ export class MoveOutScheduler {
     this.logger.log('Running scheduled vacate check...');
 
     const now = new Date();
-    // Normalization not strictly needed if we compare < FirstDayOfCurrentMonth
-    // But safer:
+    // Normalize to start of current month
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     // Find APPROVED requests where moveOutMonth < Current Month
@@ -39,36 +45,26 @@ export class MoveOutScheduler {
       try {
         this.logger.log(`Processing vacate for Tenant ${req.tenant} (Flat ${req.flat})`);
         
-        // Use tenantsService to remove/vacate
-        // Note: remove() expects Tenant ID (User ID)
-        // Ensure tenant is populated or just use the ID
-        await this.tenantsService.remove(req.tenant.toString());
+        // Vacate the flat and remove tenant assignment
+        await this.flatModel.findByIdAndUpdate(req.flat, {
+          status: FlatStatus.VACANT,
+          $unset: { tenant: '' },
+        });
 
-        // Update request status to 'COMPLETED' or delete?
-        // Let's add a COMPLETED status or just keep it Approved but processed?
-        // Better to mark processed. But Enum might need update.
-        // For now, let's just log. If we don't change status/flag, it might run again?
-        // Wait, tenantsService.remove DELETES the user. 
-        // So req.tenant (User) will be gone.
-        // But the Request document remains.
-        // If User is gone, TenantsService.remove might fail if it tries to find User?
-        // TenantsService.remove:
-        // 1. flatModel.updateMany({tenant: id}, {unset, status: VACANT})
-        // 2. userService.removeUser(id)
-        // It relies on ID. It should be fine if called once.
-        // But if we run this again next month, we might try to remove a non-existent user.
-        // We should delete the request or status update.
+        // Remove flat assignment from tenant user (preserve the account)
+        await this.userModel.findByIdAndUpdate(req.tenant, {
+          $unset: { flat: '' },
+        });
+
+        // Mark request as COMPLETED to prevent reprocessing
+        await this.moveOutRequestModel.findByIdAndUpdate(req._id, {
+          status: MoveOutRequestStatus.COMPLETED,
+        });
+
+        // Trigger ToLet feed update so the flat appears as vacant
+        await this.toLetService.updateVacancyStatus(req.flat.toString());
         
-        // Let's delete the request after processing to keep it clean? 
-        // Or keep history? If history, we need a PROCESSED status.
-        // Let's delete for now as per "Request" lifecycle usually ends.
-        // Or update to REJECTED/ARCHIVED?
-        // Re-using APPROVED is risky if we don't flag "processed".
-        
-        // Simple fix: delete the request.
-        await this.moveOutRequestModel.deleteOne({ _id: req._id });
-        
-        this.logger.log(`Vacated Tenant ${req.tenant} successfully.`);
+        this.logger.log(`Vacated Tenant ${req.tenant} successfully. Tenant account preserved.`);
       } catch (error) {
         this.logger.error(`Failed to vacate Tenant ${req.tenant}:`, error);
       }

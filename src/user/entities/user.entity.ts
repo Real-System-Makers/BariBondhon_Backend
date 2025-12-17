@@ -43,6 +43,9 @@ export class User extends AbstractEntity<User> {
     bankName: string;
     branchName: string;
   };
+
+  @Prop({ type: [{ from: Number, to: Number, rate: Number }], required: false })
+  electricitySlabs?: { from: number; to: number; rate: number }[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

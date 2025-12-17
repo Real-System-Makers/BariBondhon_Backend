@@ -7,6 +7,7 @@ export enum MoveOutRequestStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
+  COMPLETED = 'COMPLETED', // Moveout has been processed by scheduler
 }
 
 export type MoveOutRequestDocument = MoveOutRequest & Document;

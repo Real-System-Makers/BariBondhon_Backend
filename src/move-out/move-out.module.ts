@@ -8,6 +8,7 @@ import {
 } from './entities/move-out-request.entity';
 import { ToLetModule } from '../to-let/to-let.module';
 import { Flat, FlatSchema } from '../flats/entities/flat.entity';
+import { User, UserSchema } from '../user/entities/user.entity';
 import { UserModule } from '../user/user.module';
 import { TenantsModule } from '../tenants/tenants.module';
 import { MoveOutScheduler } from './move-out.scheduler';
@@ -18,6 +19,7 @@ import { MoveOutScheduler } from './move-out.scheduler';
     MongooseModule.forFeature([
       { name: MoveOutRequest.name, schema: MoveOutRequestSchema },
       { name: Flat.name, schema: FlatSchema },
+      { name: User.name, schema: UserSchema },
     ]),
     ToLetModule, // Added ToLetModule here
     UserModule,

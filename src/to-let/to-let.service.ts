@@ -26,7 +26,7 @@ export class ToLetService implements OnModuleInit {
 
   async syncPosts() {
     console.log('--- ToLetService: Starting Sync ---');
-    const stats = { vacant: 0, upcoming: 0, errors: [] };
+    const stats: { vacant: number; upcoming: number; errors: string[] } = { vacant: 0, upcoming: 0, errors: [] };
 
     try {
       // Clear existing posts
@@ -90,13 +90,14 @@ export class ToLetService implements OnModuleInit {
 
     // 1. Check if Flat is Vacant
     const flat = await this.flatModel.findById(flatId).exec();
-    const isVacant = flat && flat.status === FlatStatus.VACANT; // Case sensitive check usually sufficient if enum used correctly
+    const isVacant = flat && flat.status === FlatStatus.VACANT;
 
-    // 2. Check for Approved Move-Out Request (Future Vacancy)
+    // 2. Check for APPROVED Move-Out Request (not COMPLETED)
+    // Only APPROVED requests represent pending future vacancies
     const activeRequest = await this.moveOutRequestModel.findOne({
       flat: flatId,
       status: MoveOutRequestStatus.APPROVED,
-    }).sort({ moveOutMonth: 1 }).exec(); // Get earliest if multiple? Usually one.
+    }).sort({ moveOutMonth: 1 }).exec();
 
     if (isVacant) {
       // Priority 1: Currently Vacant
@@ -112,7 +113,7 @@ export class ToLetService implements OnModuleInit {
       );
       console.log(`ToLetService: Flat ${flatId} marked as Vacant.`);
     } else if (activeRequest) {
-      // Priority 2: Upcoming Vacancy
+      // Priority 2: Upcoming Vacancy (APPROVED but not yet moved out)
       await this.toLetPostModel.findOneAndUpdate(
         { flat: flatId },
         {
@@ -125,7 +126,7 @@ export class ToLetService implements OnModuleInit {
       );
       console.log(`ToLetService: Flat ${flatId} marked as Upcoming (from ${activeRequest.moveOutMonth}).`);
     } else {
-      // Not Vacant AND No Request -> Remove from ToLet
+      // Not Vacant AND No Active Request -> Remove from ToLet
       await this.toLetPostModel.findOneAndDelete({ flat: flatId });
       console.log(`ToLetService: Flat ${flatId} removed from To-Let list.`);
     }
