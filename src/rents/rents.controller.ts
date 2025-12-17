@@ -64,6 +64,27 @@ export class RentsController {
     return this.rentsService.findByTenant(userId);
   }
 
+  @Get('tenant/payment-history')
+  @HttpCode(HttpStatus.OK)
+  getPaymentHistory(
+    @GetCurrentUser('_id') userId: string,
+    @Query('status') status?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const filters: any = {};
+    if (status) {
+      filters.status = status.split(',');
+    }
+    if (limit) {
+      filters.limit = parseInt(limit);
+    }
+    if (offset) {
+      filters.offset = parseInt(offset);
+    }
+    return this.rentsService.getPaymentHistory(userId, filters);
+  }
+
   @Get('stats/:month/:year')
   @HttpCode(HttpStatus.OK)
   getMonthlyStats(

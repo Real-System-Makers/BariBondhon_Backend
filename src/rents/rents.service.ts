@@ -127,6 +127,41 @@ export class RentsService {
       .exec();
   }
 
+  async getPaymentHistory(
+    tenantId: string,
+    filters?: {
+      status?: string[];
+      limit?: number;
+      offset?: number;
+    },
+  ): Promise<{ data: Rent[]; total: number }> {
+    const query: any = { tenant: tenantId };
+
+    if (filters?.status && filters.status.length > 0) {
+      query.status = { $in: filters.status };
+    }
+
+    const total = await this.rentModel.countDocuments(query);
+
+    let queryBuilder = this.rentModel
+      .find(query)
+      .populate('flat', 'name')
+      .populate('owner', 'name phone email address')
+      .sort({ year: -1, month: -1, createdAt: -1 });
+
+    if (filters?.limit) {
+      queryBuilder = queryBuilder.limit(filters.limit);
+    }
+
+    if (filters?.offset) {
+      queryBuilder = queryBuilder.skip(filters.offset);
+    }
+
+    const data = await queryBuilder.exec();
+
+    return { data, total };
+  }
+
   async update(
     id: string,
     updateRentDto: UpdateRentDto,
